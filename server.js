@@ -10,10 +10,12 @@ const Promise = require('bluebird');
 const fs = require('fs');
 const schema = fs.readFileSync('./graphql/schema.graphql').toString();
 const resolver = require('./graphql/resolver');
+const { hostname } = require('./lib/config');
+const isAuth = require('./middleware/is-auth');
 
-const hostname = 'mongodb+srv://root:Passw0rd@cluster0-lcz2p.azure.mongodb.net/homework';
 
 app.use(cors());
+app.use(isAuth);
 app.use(bodyParser.json());
 app.use('/graphql', graphqlHttp({
     schema: buildSchema(schema),

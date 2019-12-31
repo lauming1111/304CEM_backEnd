@@ -1,40 +1,46 @@
 input HomeworkInput {
     _id: ID
     name: String
-    creator:String
+    creator: String
 }
 
 input UserInfoInput {
-    _id:ID
+    _id: ID
     name: String!
-    email:String!
-    password:String!
+    email: String!
+    password: String!
 }
 
 type UserInfo {
-    _id:ID!
+    _id: ID!
     name: String!
-    email:String!
-    password:String
-    createdHomeworks:[Homework!]
+    email: String!
+    password: String
+    createdHomeworks: [Homework!]
 }
 
 type Homework {
-    _id:ID
+    _id: ID
     name: String
     creator: UserInfo!
 }
 
+type Auth {
+    userId: ID!
+    token: String!
+    tokenExpirationDate: Int!
+}
 
 type RootQuery {
     homeworks: [Homework!]!
     users: [UserInfo!]!
+    login(email: String!, password: String!): Auth!
 }
 
 type RootMutation {
     createHomeworks(homeworkInput: HomeworkInput): Homework
     createUser(userInput: UserInfoInput): UserInfo
-    deleteHomework(homeworkId:ID!):Homework!
+    deleteHomework(homeworkId: ID!): Homework!
 }
 
 schema {

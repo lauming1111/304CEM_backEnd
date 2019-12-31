@@ -1,6 +1,8 @@
 const Homework = require('../models/homework');
 const User = require('../models/user');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+const { tokenSecretKey } = require('../lib/config');
 
 /**
  * refactor function to handle return basic result
@@ -49,12 +51,47 @@ const homeworkById = (id) => {
 };
 
 module.exports = {
-  createHomeworks: (r) => {
-    console.log(r);
+  login: async (r) => {
+    // verify user exist or not
+    const user = await User.findOne({
+      email: r.email,
+    });
+
+    if (!user) {
+      throw new Error('Fail to login');
+    }
+    // verify passowrd
+    const hashPassword = crypto
+      .createHmac('sha256', tokenSecretKey)
+      .update(r.password)
+      .digest('hex');
+
+    if (user._doc.password !== hashPassword) {
+      throw new Error('Fail to login');
+    }
+
+    const token = jwt.sign({
+      userId: user._id,
+      email: user.email
+    }, tokenSecretKey, {
+      expiresIn: '1h'
+    });
+
+    return {
+      userId: user.id,
+      token,
+      tokenExpirationDate: 1,
+    };
+
+  },
+  createHomeworks: (r, args) => {
+    if (!args.isAuth) {
+      throw new Error('Unauthenticated');
+    }
     let homeworkInput = null;
     const homework = new Homework({
       name: r.homeworkInput.name,
-      creator: '5e0b01a43e4c4c0f804e822c',
+      creator: args.userId,
     });
 
     return homework
@@ -62,7 +99,7 @@ module.exports = {
       .then((r) => {
         homeworkInput = transformResponse(r);
         return User
-          .findById('5e0b01a43e4c4c0f804e822c');
+          .findById(args.userId);
       })
       .then((user) => {
         if (!user) {
@@ -79,9 +116,9 @@ module.exports = {
       });
   },
   createUser: (r) => {
-    const secret = 'abcdefg';
+
     const hashPassword = crypto
-      .createHmac('sha256', secret)
+      .createHmac('sha256', tokenSecretKey)
       .update(r.userInput.password)
       .digest('hex');
 

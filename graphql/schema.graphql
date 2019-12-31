@@ -1,0 +1,43 @@
+input HomeworkInput {
+    _id: ID
+    name: String
+    creator:String
+}
+
+input UserInfoInput {
+    _id:ID
+    name: String!
+    email:String!
+    password:String!
+}
+
+type UserInfo {
+    _id:ID!
+    name: String!
+    email:String!
+    password:String
+    createdHomeworks:[Homework!]
+}
+
+type Homework {
+    _id:ID
+    name: String
+    creator: UserInfo!
+}
+
+
+type RootQuery {
+    homeworks: [Homework!]!
+    users: [UserInfo!]!
+}
+
+type RootMutation {
+    createHomeworks(homeworkInput: HomeworkInput): Homework
+    createUser(userInput: UserInfoInput): UserInfo
+    deleteHomework(homeworkId:ID!):Homework!
+}
+
+schema {
+    query: RootQuery
+    mutation: RootMutation
+}

@@ -142,9 +142,9 @@ module.exports = {
       });
   },
   createComments: (r, args) => {
-    if (!args.isAuth) {
-      throw new Error('Unauthenticated');
-    }
+    // if (!args.isAuth) {
+    //   throw new Error('Unauthenticated');
+    // }
     let commentInput = null;
     const comment = new Comment({
       comment: r.commentInput.comment,

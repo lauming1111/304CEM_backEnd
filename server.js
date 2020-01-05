@@ -130,6 +130,7 @@ app.get('/newUserName/:name', function (req, res) {
     }).then((resp => {
       if (resp) {
         resp.name = data.new;
+        resp.updateTimestamp = new Date().getTime();
         return resp.save()
           .then(() => {
             res.send({

@@ -1,16 +1,8 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-const usersSchema = new Schema({
+const recipeSchema = new Schema({
   name: {
-    type: String,
-    required: true
-  },
-  email: {
-    type: String,
-    required: true
-  },
-  password: {
     type: String,
     required: true
   },
@@ -22,9 +14,13 @@ const usersSchema = new Schema({
     type: String,
     required: false
   },
-  message: {
+  context: {
     type: String,
     required: false
+  },
+  creator: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
   },
   createdComments: [
     {
@@ -32,11 +28,5 @@ const usersSchema = new Schema({
       ref: 'Comment'
     }
   ],
-  createdRecipes: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: 'Recipe'
-    }
-  ]
 });
-module.exports = mongoose.model('User', usersSchema);
+module.exports = mongoose.model('Recipe', recipeSchema);

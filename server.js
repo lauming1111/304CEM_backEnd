@@ -12,7 +12,7 @@ const schema = fs.readFileSync('./graphql/schema.graphql').toString();
 const resolver = require('./graphql/resolver');
 const { hostname } = require('./lib/config');
 const isAuth = require('./middleware/is-auth');
-
+const User = require('./models/user');
 
 app.use(cors());
 app.use(isAuth);
@@ -24,9 +24,20 @@ app.use('/graphql', graphqlHttp({
   })
 );
 
-app.post('/signup', function (req, res, next) {
-  console.log(req.body);
-  res.json({ msg: req.body });
+app.get('/userid/:id', function (req, res) {
+  if (req.params.id) {
+    return User.findById(req.params.id)
+      .then((r) => {
+        console.log({
+          message: `Your user ID is ${req.params.id}`,
+          profile: r,
+        });
+        res.send({
+          message: `Your user ID is ${req.params.id}`,
+          profile: r,
+        });
+      });
+  }
 });
 
 mongoose.connect(hostname)

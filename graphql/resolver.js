@@ -1,5 +1,6 @@
-const Homework = require('../models/homework');
+const Recipe = require('../models/recipe');
 const User = require('../models/user');
+const Comment = require('../models/comment');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { tokenSecretKey } = require('../lib/config');
@@ -24,7 +25,8 @@ const userById = (id) => {
     .then((r) => {
       return {
         ...r._doc,
-        createdHomeworks: homeworkById.bind(this, r._doc.createdHomeworks)
+        createdRecipes: RecipeById.bind(this, r._doc.createdRecipes),
+        createdComments: CommentById.bind(this, r._doc.createdComments)
       };
     })
     .catch((e) => {
@@ -33,16 +35,34 @@ const userById = (id) => {
 };
 
 /**
- * get homework detail from the user
- * @param id homework Object ID
+ * get Recipe detail from the user
+ * @param id Recipe Object ID
  */
-const homeworkById = (id) => {
-  return Homework.find({
+const RecipeById = (id) => {
+  return Recipe.find({
     _id: { $in: id }
   })
     .then((r) => {
-      return r.map(homework => {
-        return transformResponse(homework);
+      return r.map(recipe => {
+        return transformResponse(recipe);
+      });
+    })
+    .catch((e) => {
+      throw e;
+    });
+};
+
+/**
+ * get Recipe detail from the user
+ * @param id Recipe Object ID
+ */
+const CommentById = (id) => {
+  return Comment.find({
+    _id: { $in: id }
+  })
+    .then((r) => {
+      return r.map(recipe => {
+        return transformResponse(recipe);
       });
     })
     .catch((e) => {
@@ -61,9 +81,10 @@ module.exports = {
       throw new Error('Fail to login');
     }
     // verify passowrd
+    const decodedPassword = Buffer.from(r.password, 'base64').toString('utf8');
     const hashPassword = crypto
       .createHmac('sha256', tokenSecretKey)
-      .update(r.password)
+      .update(decodedPassword)
       .digest('hex');
 
     if (user._doc.password !== hashPassword) {
@@ -72,32 +93,37 @@ module.exports = {
 
     const token = jwt.sign({
       userId: user._id,
-      email: user.email
+      email: user.email,
     }, tokenSecretKey, {
       expiresIn: '1h'
     });
 
     return {
       userId: user.id,
+      email: user.email,
+      name: user.name,
       token,
       tokenExpirationDate: 1,
     };
 
   },
-  createHomeworks: (r, args) => {
+  createRecipes: (r, args) => {
     if (!args.isAuth) {
       throw new Error('Unauthenticated');
     }
-    let homeworkInput = null;
-    const homework = new Homework({
-      name: r.homeworkInput.name,
+    let recipeInput = null;
+    const recipe = new Recipe({
+      name: r.recipeInput.name,
+      context: r.recipeInput.context,
+      createdTimestamp: new Date().getTime(),
+      updateTimestamp: new Date().getTime(),
       creator: args.userId,
     });
 
-    return homework
+    return recipe
       .save()
       .then((r) => {
-        homeworkInput = transformResponse(r);
+        recipeInput = transformResponse(r);
         return User
           .findById(args.userId);
       })
@@ -105,27 +131,75 @@ module.exports = {
         if (!user) {
           throw new Error('User not found');
         }
-        user.createdHomeworks.push(homework);
+        user.createdRecipes.push(recipe);
         return user.save();
       })
       .then((r) => {
-        return homeworkInput;
+        return recipeInput;
+      })
+      .catch((e) => {
+        throw e;
+      });
+  },
+  createComments: (r, args) => {
+    if (!args.isAuth) {
+      throw new Error('Unauthenticated');
+    }
+    let commentInput = null;
+    const comment = new Comment({
+      comment: r.commentInput.comment,
+      rate: r.commentInput.rate,
+      recipeId: r.commentInput.recipeId,
+      createdTimestamp: new Date().getTime(),
+      updateTimestamp: new Date().getTime(),
+      creator: args.userId,
+    });
+
+    return comment
+      .save()
+      .then((resp) => {
+        commentInput = transformResponse(resp);
+        return User
+          .findById(args.userId);
+      })
+      .then((user) => {
+        if (!user) {
+          throw new Error('User not found');
+        }
+        user.createdComments.push(comment);
+        return user.save();
+      })
+      .then(() => {
+        return Recipe
+          .findOne({
+            _id: r.commentInput.recipeId
+          })
+          .then((recipe => {
+            console.log(r);
+            recipe.createdComments.push(comment);
+            recipe.save();
+          }));
+      })
+      .then((r) => {
+        return commentInput;
       })
       .catch((e) => {
         throw e;
       });
   },
   createUser: (r) => {
-
+    const decodedPassword = Buffer.from(r.userInput.password, 'base64').toString('utf8');
     const hashPassword = crypto
       .createHmac('sha256', tokenSecretKey)
-      .update(r.userInput.password)
+      .update(decodedPassword)
       .digest('hex');
 
     const user = new User({
       name: r.userInput.name,
       email: r.userInput.email,
       password: hashPassword,
+      createdTimestamp: new Date().getTime(),
+      updateTimestamp: new Date().getTime(),
     });
 
     // check user if exist before creating new one
@@ -133,15 +207,12 @@ module.exports = {
       email: r.userInput.email
     })
       .then((r) => {
-        console.log(r);
         if (r) {
           throw new Error('User already exist.');
         }
-        console.log('shoudnt');
         return user
           .save()
           .then((r) => {
-            console.log(r);
             return {
               ...r._doc,
               password: null // do not return password in the response
@@ -152,9 +223,8 @@ module.exports = {
         throw e;
       });
   },
-  homeworks: () => {
-    return Homework.find()
-      // .populate('creator')
+  recipes: () => {
+    return Recipe.find()
       .then((r) => {
         return r.map(data => {
           return transformResponse(data);
@@ -164,18 +234,45 @@ module.exports = {
         throw e;
       });
   },
-  deleteHomework: async (r) => {
-    const homework = await Homework.findById(r.homeworkId);
-    if (!homework) {
-      throw  new Error('Homework do not exist');
+  comments: () => {
+    return Comment.find()
+      .then((r) => {
+        console.log(r);
+        return r.map(data => {
+          return transformResponse(data);
+        });
+      })
+      .catch((e) => {
+        throw e;
+      });
+  },
+  deleteRecipe: async (r) => {
+    const recipe = await Recipe.findById(r.recipeId);
+    if (!recipe) {
+      throw  new Error('Recipe do not exist');
     }
 
-    const homeworkDetail = transformResponse(homework);
+    const recipeDetail = transformResponse(recipe);
 
-    await Homework.deleteOne({
-      _id: homeworkDetail._id
+    await Recipe.deleteOne({
+      _id: recipeDetail._id
     });
 
-    return homeworkDetail;
+    return recipeDetail;
+  },
+  deleteComment: async (r) => {
+    console.log(r);
+    const comment = await Comment.findById(r.commentId);
+    if (!comment) {
+      throw new Error('Comment do not exist');
+    }
+
+    const commentDetail = transformResponse(comment);
+
+    await Comment.deleteOne({
+      _id: commentDetail._id
+    });
+
+    return commentDetail;
   },
 };

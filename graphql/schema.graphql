@@ -1,6 +1,19 @@
-input HomeworkInput {
+input RecipeInput {
     _id: ID
     name: String
+    context:String
+    createdTimestamp:String
+    updateTimestamp:String
+    creator: String
+}
+
+input CommentInput {
+    _id: ID
+    comment: String
+    rate:Int
+    recipeId:String!
+    createdTimestamp:String
+    updateTimestamp:String
     creator: String
 }
 
@@ -9,6 +22,18 @@ input UserInfoInput {
     name: String!
     email: String!
     password: String!
+    createdTimestamp:String
+    updateTimestamp:String
+}
+
+type Comment {
+    _id: ID
+    comment: String
+    rate:String
+    recipeId:String
+    createdTimestamp:String
+    updateTimestamp:String
+    creator: UserInfo
 }
 
 type UserInfo {
@@ -16,31 +41,43 @@ type UserInfo {
     name: String!
     email: String!
     password: String
-    createdHomeworks: [Homework!]
+    createdTimestamp:String
+    updateTimestamp:String
+    createdRecipes: [Recipe!]
+    createdComments: [Comment!]
 }
 
-type Homework {
+type Recipe {
     _id: ID
     name: String
-    creator: UserInfo!
+    context:String
+    createdTimestamp:String
+    updateTimestamp:String
+    creator: UserInfo
+    createdComments: [Comment!]
 }
 
 type Auth {
     userId: ID!
+    email: String!
+    name:String
     token: String!
     tokenExpirationDate: Int!
 }
 
 type RootQuery {
-    homeworks: [Homework!]!
+    recipes: [Recipe!]!
+    comments:[Comment!]!
     users: [UserInfo!]!
     login(email: String!, password: String!): Auth!
 }
 
 type RootMutation {
-    createHomeworks(homeworkInput: HomeworkInput): Homework
+    createRecipes(recipeInput: RecipeInput): Recipe
     createUser(userInput: UserInfoInput): UserInfo
-    deleteHomework(homeworkId: ID!): Homework!
+    createComments(commentInput:CommentInput):Comment
+    deleteRecipe(recipeId: ID!): Recipe!
+    deleteComment(commentId: ID!): Comment!
 }
 
 schema {
